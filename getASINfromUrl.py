@@ -16,7 +16,9 @@ def getASINfromMnrate(url):
         if href.find("https://mnrate.com/item/aid/") > -1:
             href = href.split("/")
             href = href[-1]
-            result.append(href)
+           if len(href) is 10:
+                    if href not in result:
+                        result.append(href)
     return result
 
 
