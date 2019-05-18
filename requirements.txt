@@ -1,0 +1,6 @@
+os
+bs4
+urllib
+pandas
+xlwt
+xlrd
