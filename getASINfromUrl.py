@@ -1,7 +1,6 @@
 import os
 from os import path
 from bs4 import BeautifulSoup
-import urllib.request as urllib
 import pandas as pd
 import xlwt
 import xlrd
@@ -10,49 +9,59 @@ import requests
 from time import sleep
 
 def getASINfromMnrate(url):
-    headers = {'User-agent': 'Mozilla/5.0'}
+    headers = {'User-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/36.0.1985.143 Safari/537.36'}
     result = []
-    # html = urllib.urlopen(url)
     r = requests.get(url,headers=headers)
     html = r.content
+    # print(len(html))
+    while(len(html)<400000):
+        sleep(180)
+        r = requests.get(url,headers=headers)
+        html = r.content
+        # print("request again for url {}".format(url))
     soup = BeautifulSoup(html, "lxml")
+    countASIN = 0
     for tag in soup.find_all('a', attrs={"class": "original_link"}):
         href = tag.get("href")
         if href.find("https://mnrate.com/item/aid/") > -1:
             href = href.split("/")
             href = href[-1]
-            print(href)
             if len(href) is 10:
                 if href not in result:
+                    countASIN += 1
                     result.append(href)
+    print("{} ASIN コード取得しました。".format(countASIN))
     return result
 
 
 def getASINfromAmazon(url):
-    headers = {'User-agent': 'Mozilla/5.0'}
+    headers = {'User-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/36.0.1985.143 Safari/537.36'}
     result = []
-    # html = urllib.urlopen(url)
-    opener = urllib.build_opener()
-    opener.addheaders = [('User-agent', 'Mozilla/5.0')]
-    response = opener.open(url)
-    html = response.read() 
-    # r = requests.get(url)
-    # html = r.content
+    # try:
+    #     html = urllib.urlopen(url)
+    # except Exception:
+    #     print("error at {}".format(url))
+    # opener = urllib.build_opener()
+    # opener.addheaders = [('User-agent', 'Mozilla/5.0')]
+    # response = opener.open(url)
+    # html = response.read() 
+    r = requests.get(url,headers=headers)
+    html = r.content
+    while(len(html)<30000):
+        # sleep(20)
+        r = requests.get(url,headers=headers)
+        html = r.content
+        # print("request again for url {}".format(url))
     soup = BeautifulSoup(html, "lxml")
-    # print(soup)
-    for tag in soup.find_all('a', attrs={"class": "a-link-normal"}):
-        # print(tag)
-        href = tag.get("href")
-        print(href)
-        if href.find("/dp/") > -1:
-            href = href.split("/")
-            if len(href) >= 6:
-                asinCode = href[5]
-                print(asinCode)
-                if len(asinCode) is 10:
-                    if asinCode not in result:
-                        print(asinCode)
-                        result.append(asinCode)
+    exist = soup.find_all('div',attrs={"class": "sg-col-20-of-24 s-result-item sg-col-0-of-12 sg-col-28-of-32 sg-col-16-of-20 sg-col sg-col-32-of-36 sg-col-12-of-16 sg-col-24-of-28"})
+    countAsin = 0
+    for item in exist:
+        dataAsin = item.attrs["data-asin"]
+        if len(dataAsin) is 10:
+            if dataAsin not in result:
+                countAsin = countAsin + 1
+                result.append(dataAsin)
+    print("{} ASIN コード取得しました。".format(countAsin))
     return result
 
 
@@ -74,14 +83,15 @@ def main():
     if 'mnrate' not in columns:
         print('inputUrlにはファイルにはmnrateコラムが入っていません。')
         return
-
+    amazonBaseFromExcel = inputUrl['amazon'].iloc[0]
+    mnrateBaseFromExcel = inputUrl['mnrate'].iloc[0]
     amazonUrl = []
     mnrateUrl = []
-    for i in range(1):
-        amazonBaseUrl = "https://www.amazon.co.jp/s?i=kitchen&bbn=3828871&rh=n%3A3828871%2Cp_n_availability%3A2227307051%2Cp_36%3A150000-200000&page={}&qid=1558190853&ref=sr_pg_2".format(i+1)
-        amazonUrl.append(amazonBaseUrl)
     for i in range(400):
-        mnrateBaseUrl = "https://mnrate.com/search?i=Kitchen&kwd=&ex_asa%5B%5D=e&ex_asa%5B%5D=e&ex_asa%5B%5D=p&ex_asa%5B%5D=e&ex_asa%5B%5D=p&ex_asa%5B%5D=e&ex_asa%5B%5D=p&nppp_min=120&s=r&tn_min=2&tn_max=&p={}".format(i+1)
+        amazonBaseUrl = amazonBaseFromExcel.format(i+1)
+        amazonUrl.append(amazonBaseUrl)
+    for i in range(1000):
+        mnrateBaseUrl = mnrateBaseFromExcel.format(i+1)
         mnrateUrl.append(mnrateBaseUrl)
     # write path
     outputPath = "./output.xls"
@@ -93,23 +103,20 @@ def main():
         start = datetime.datetime.now()
         asin = getASINfromAmazon(link)
         end = datetime.datetime.now()
-        print("count:{},start: {},end: {},excute: {}".format(count,start,end,end-start))
+        print("番号:{},開始: {},終了: {},実行時間: {}秒".format(count,start,end,end-start))
         for element in asin:
             amazonASIN.append(element)
 
     count = 0
     sleepTime = 300
-    # for link in mnrateUrl:
-    #     count = count + 1
-    #     if count % 40 is 0:
-    #         print("wait for {}s".format(sleepTime))
-    #         sleep(sleepTime)
-    #     start = datetime.datetime.now()
-    #     asin = getASINfromMnrate(link)
-    #     end = datetime.datetime.now()
-    #     print("count:{},start: {},end: {},excute: {}".format(count,start,end,end-start))
-    #     for element in asin:
-    #         mnrateASIN.append(element)
+    for link in mnrateUrl:
+        count = count + 1
+        start = datetime.datetime.now()
+        asin = getASINfromMnrate(link)
+        end = datetime.datetime.now()
+        print("番号:{},開始: {},終了: {},実行時間: {}秒".format(count,start,end,end-start))
+        for element in asin:
+            mnrateASIN.append(element)
 
     # check if output file is exist
     if os.path.isfile(outputPath):
@@ -123,7 +130,7 @@ def main():
     for index in range(len(amazonASIN)):
         value = amazonASIN[index]
         # print("index: {},value: {}".format(index, value))
-        if row is 1000:
+        if row == 1000:
             col = col + 1
             row = 0
         sheet.write(row, col, value)
@@ -133,7 +140,7 @@ def main():
     col = 0
     for index in range(len(mnrateASIN)):
         value = mnrateASIN[index]
-        if row is 1000:
+        if row == 1000:
             col = col + 1
             row = 0
         sheet2.write(row, col, value)
