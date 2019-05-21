@@ -18,3 +18,7 @@ xlrd
 `pip install --upgrade pip`  
 `pip install -r requirements.txt`  
 `python getASINfromUrl.py`
+
+# Run in windows
+`env\Scripts\activate`  
+`python getASINfromUrl.py`
