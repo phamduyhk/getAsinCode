@@ -83,70 +83,80 @@ def main():
     if 'mnrate' not in columns:
         print('inputUrlにはファイルにはmnrateコラムが入っていません。')
         return
-    amazonBaseFromExcel = inputUrl['amazon'].iloc[0]
-    mnrateBaseFromExcel = inputUrl['mnrate'].iloc[0]
+
     amazonUrl = []
     mnrateUrl = []
-    for i in range(400):
-        amazonBaseUrl = amazonBaseFromExcel.format(i+1)
-        amazonUrl.append(amazonBaseUrl)
-    for i in range(1000):
-        mnrateBaseUrl = mnrateBaseFromExcel.format(i+1)
-        mnrateUrl.append(mnrateBaseUrl)
-    # write path
-    outputPath = "./output.xls"
     amazonASIN = []
     mnrateASIN = []
-    count = 0
-    for link in amazonUrl:
-        count = count + 1
-        start = datetime.datetime.now()
-        asin = getASINfromAmazon(link)
-        end = datetime.datetime.now()
-        print("番号:{},開始: {},終了: {},実行時間: {}秒".format(count,start,end,end-start))
-        for element in asin:
-            amazonASIN.append(element)
+    # write path
+    outputPath = "./output.xls"
 
-    count = 0
-    sleepTime = 300
-    for link in mnrateUrl:
-        count = count + 1
-        start = datetime.datetime.now()
-        asin = getASINfromMnrate(link)
-        end = datetime.datetime.now()
-        print("番号:{},開始: {},終了: {},実行時間: {}秒".format(count,start,end,end-start))
-        for element in asin:
-            mnrateASIN.append(element)
+    if pd.isnull(inputUrl['amazon'].iloc[0]) is False:
+        amazonBaseFromExcel = inputUrl['amazon'].iloc[0]
+        if amazonBaseFromExcel.find("amazon.co.jp") <0:
+            print("アマゾン日本のリンクが正しくない。プログラムが終了する。")
+        for i in range(400):
+            amazonBaseUrl = amazonBaseFromExcel.format(i+1)
+            amazonUrl.append(amazonBaseUrl)
+        count = 0
+        for link in amazonUrl:
+            count = count + 1
+            start = datetime.datetime.now()
+            asin = getASINfromAmazon(link)
+            end = datetime.datetime.now()
+            print("番号:{},開始: {},終了: {},実行時間: {}秒".format(count,start,end,end-start))
+            for element in asin:
+                amazonASIN.append(element)
 
-    # check if output file is exist
-    if os.path.isfile(outputPath):
-        os.remove(outputPath)
-        print("Removed {}".format(outputPath))
-    # write to output.xls
-    col = 0
-    row = 0
-    workbook = xlwt.Workbook()
-    sheet = workbook.add_sheet('AMAZON')
-    for index in range(len(amazonASIN)):
-        value = amazonASIN[index]
-        # print("index: {},value: {}".format(index, value))
-        if row == 1000:
-            col = col + 1
-            row = 0
-        sheet.write(row, col, value)
-        row = row + 1
-    sheet2 = workbook.add_sheet('MNRATE')
-    row = 0
-    col = 0
-    for index in range(len(mnrateASIN)):
-        value = mnrateASIN[index]
-        if row == 1000:
-            col = col + 1
-            row = 0
-        sheet2.write(row, col, value)
-        row = row + 1
-    workbook.save(outputPath)
-    print("Wrote to {}".format(outputPath))
+
+    if pd.isnull(inputUrl['mnrate'].iloc[0]) is False:
+        mnrateBaseFromExcel = inputUrl['mnrate'].iloc[0]
+        if mnrateBaseFromExcel.find("mnrate.com") <0:
+            print("モノレートのリンクが正しくない。プログラムが終了する。")
+            return
+        for i in range(1000):
+            mnrateBaseUrl = mnrateBaseFromExcel.format(i+1)
+            mnrateUrl.append(mnrateBaseUrl)
+        count = 0
+        for link in mnrateUrl:
+            count = count + 1
+            start = datetime.datetime.now()
+            asin = getASINfromMnrate(link)
+            end = datetime.datetime.now()
+            print("番号:{},開始: {},終了: {},実行時間: {}秒".format(count,start,end,end-start))
+            for element in asin:
+                mnrateASIN.append(element)
+
+    if len(amazonASIN)+len(mnrateASIN)>0:
+        # check if output file is exist
+        if os.path.isfile(outputPath):
+            os.remove(outputPath)
+            print("Removed {}".format(outputPath))
+        # write to output.xls
+        col = 0
+        row = 0
+        workbook = xlwt.Workbook()
+        sheet = workbook.add_sheet('AMAZON')
+        for index in range(len(amazonASIN)):
+            value = amazonASIN[index]
+            # print("index: {},value: {}".format(index, value))
+            if row == 1000:
+                col = col + 1
+                row = 0
+            sheet.write(row, col, value)
+            row = row + 1
+        sheet2 = workbook.add_sheet('MNRATE')
+        row = 0
+        col = 0
+        for index in range(len(mnrateASIN)):
+            value = mnrateASIN[index]
+            if row == 1000:
+                col = col + 1
+                row = 0
+            sheet2.write(row, col, value)
+            row = row + 1
+        workbook.save(outputPath)
+        print("Wrote to {}".format(outputPath))
 
 
 if __name__ == "__main__":
