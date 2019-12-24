@@ -7,18 +7,24 @@ import xlrd
 import datetime
 import requests
 from time import sleep
+import datetime
+
 
 def getASINfromMnrate(url):
-    headers = {'User-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/36.0.1985.143 Safari/537.36'}
+    headers = {
+        'User-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/36.0.1985.143 Safari/537.36'}
     result = []
-    r = requests.get(url,headers=headers)
-    html = r.content
+    # print("url {}".format(url))
     # print(len(html))
-    while(len(html)<400000):
-        sleep(180)
-        r = requests.get(url,headers=headers)
-        html = r.content
-        # print("request again for url {}".format(url))
+    while True:
+        r = requests.get(url, headers=headers)
+        if r.status_code != 403:
+            # print("status: {}".format(r.status_code))
+            html = r.content
+            break
+        print(".", end='',flush=True)
+        sleep(1)
+
     soup = BeautifulSoup(html, "lxml")
     countASIN = 0
     for tag in soup.find_all('a', attrs={"class": "original_link"}):
@@ -30,12 +36,13 @@ def getASINfromMnrate(url):
                 if href not in result:
                     countASIN += 1
                     result.append(href)
-    print("{} ASIN コード取得しました。".format(countASIN))
+    print("{} ASIN コード取得しました。{}".format(countASIN, result))
     return result
 
 
 def getASINfromAmazon(url):
-    headers = {'User-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/36.0.1985.143 Safari/537.36'}
+    headers = {
+        'User-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/36.0.1985.143 Safari/537.36'}
     result = []
     # try:
     #     html = urllib.urlopen(url)
@@ -44,16 +51,21 @@ def getASINfromAmazon(url):
     # opener = urllib.build_opener()
     # opener.addheaders = [('User-agent', 'Mozilla/5.0')]
     # response = opener.open(url)
-    # html = response.read() 
+    # html = response.read()
     r = requests.get(url,headers=headers)
     html = r.content
     while(len(html)<30000):
-        # sleep(20)
         r = requests.get(url,headers=headers)
         html = r.content
-        # print("request again for url {}".format(url))
+        print(".", end='',flush=True)
+        sleep(1)
+
     soup = BeautifulSoup(html, "lxml")
-    exist = soup.find_all('div',attrs={"class": "sg-col-20-of-24 s-result-item sg-col-0-of-12 sg-col-28-of-32 sg-col-16-of-20 sg-col sg-col-32-of-36 sg-col-12-of-16 sg-col-24-of-28"})
+    exist = soup.find_all('div', attrs={
+        "class": "sg-col-20-of-24 s-result-item sg-col-0-of-12 sg-col-28-of-32 sg-col-16-of-20 sg-col sg-col-32-of-36 sg-col-12-of-16 sg-col-24-of-28"})
+    if len(exist)==0:
+        exist = soup.find_all('div', attrs={
+            "class": "sg-col-4-of-24 sg-col-4-of-12 sg-col-4-of-36 s-result-item sg-col-4-of-28 sg-col-4-of-16 sg-col sg-col-4-of-20 sg-col-4-of-32"})
     countAsin = 0
     for item in exist:
         dataAsin = item.attrs["data-asin"]
@@ -89,45 +101,49 @@ def main():
     amazonASIN = []
     mnrateASIN = []
     # write path
-    outputPath = "./output.xls"
+    today_string = datetime.date.today().strftime("%Y%m%d")
+    outputPath = "./output_"+today_string+".xls"
 
     if pd.isnull(inputUrl['amazon'].iloc[0]) is False:
         amazonBaseFromExcel = inputUrl['amazon'].iloc[0]
-        if amazonBaseFromExcel.find("amazon.co.jp") <0:
+        if amazonBaseFromExcel.find("amazon.co.jp") < 0:
             print("アマゾン日本のリンクが正しくない。プログラムが終了する。")
         for i in range(400):
             amazonBaseUrl = amazonBaseFromExcel.format(i+1)
             amazonUrl.append(amazonBaseUrl)
         count = 0
+        print("AMAZONサイトから取得開始")
         for link in amazonUrl:
             count = count + 1
             start = datetime.datetime.now()
             asin = getASINfromAmazon(link)
             end = datetime.datetime.now()
-            print("番号:{},開始: {},終了: {},実行時間: {}秒".format(count,start,end,end-start))
+            print("番号:{},開始: {},終了: {},実行時間: {}秒".format(
+                count, start, end, end-start))
             for element in asin:
                 amazonASIN.append(element)
 
-
     if pd.isnull(inputUrl['mnrate'].iloc[0]) is False:
         mnrateBaseFromExcel = inputUrl['mnrate'].iloc[0]
-        if mnrateBaseFromExcel.find("mnrate.com") <0:
+        if mnrateBaseFromExcel.find("mnrate.com") < 0:
             print("モノレートのリンクが正しくない。プログラムが終了する。")
             return
         for i in range(1000):
             mnrateBaseUrl = mnrateBaseFromExcel.format(i+1)
             mnrateUrl.append(mnrateBaseUrl)
         count = 0
+        print("MNRATEサイトから取得開始")
         for link in mnrateUrl:
             count = count + 1
             start = datetime.datetime.now()
             asin = getASINfromMnrate(link)
             end = datetime.datetime.now()
-            print("番号:{},開始: {},終了: {},実行時間: {}秒".format(count,start,end,end-start))
+            print("番号:{},開始: {},終了: {},実行時間: {}秒".format(
+                count, start, end, end-start))
             for element in asin:
                 mnrateASIN.append(element)
 
-    if len(amazonASIN)+len(mnrateASIN)>0:
+    if len(amazonASIN)+len(mnrateASIN) > 0:
         # check if output file is exist
         if os.path.isfile(outputPath):
             os.remove(outputPath)
@@ -156,10 +172,8 @@ def main():
             sheet2.write(row, col, value)
             row = row + 1
         workbook.save(outputPath)
-        print("Wrote to {}".format(outputPath))
+        print("保存先 {}".format(outputPath))
 
 
 if __name__ == "__main__":
     main()
-
-

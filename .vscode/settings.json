@@ -1,3 +1,5 @@
 {
-    "python.pythonPath": "env\\Scripts\\python.exe"
+    "python.pythonPath": "/Users/phamduy/opt/anaconda3/bin/python",
+    "git.ignoreLimitWarning": true,
+    "python.formatting.provider": "autopep8"
 }
